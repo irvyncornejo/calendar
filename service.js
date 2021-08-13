@@ -1,7 +1,7 @@
 const y = () => Logger.log(new CellsHours().getValuesForWeek())
 const letter = (index) => ['A','B','C','D','E','F'][index]
 const x = () => Logger.log(new SheetValidate('TR_ASIGNATURAS').validateKeys())
-const w = () => new DataSeccion().getValues()
+const w = () => Logger.log(new DataSeccion().getValues())
 const z = () => new CalendarValues().insertSheet()
 
 class SheetValidate{
@@ -84,7 +84,7 @@ class DataSeccion{
     const range = rangeData['range']
     const dataValues = sheet.getRange(range[0], range[1], range[2], range[3]).getValues()
     const rangeValues = dataValues.filter(row => row[4] == this.seccion)
-    return this.groupSubjects(rangeValues)
+    return this.groupTeacher(rangeValues)
   }
   groupSubjects(data){
     const groups = {}
@@ -97,19 +97,35 @@ class DataSeccion{
     })
     return groups
   }
+  groupTeacher(data){
+    const teachers = {}
+    data.forEach(row =>{
+      if(Object.keys(teachers).includes(`${row[1]}`)){
+        teachers[`${row[1]}`].push(row)
+      }else{
+        teachers[`${row[1]}`] = [row]
+      }
+    })
+    return teachers
+  }
 }
 
 class CalendarValues{
   constructor(){
     this.spreadSheet = SpreadsheetApp.openById('1ICL5O_7FCoSTpUIwcZ8FlqiSS40aHgleRTj1QDSrtDc')
   }
-  insertSheet(){
+  insert(){
     const cellsAvailable = new CellsHours('ideas').getValuesForWeek()
-    Logger.log(cellsAvailable)
     const data = new DataSeccion().getValues()
+    this.insertSheet(data)
+    this.insertValuesForGroup(data, cellsAvailable)
+  }
+  insertSheet(data){
     for(let key in data){
       this.spreadSheet.insertSheet().setName(`${key}`)
     }
+  }
+  insertValuesForGroup(data, cellsAvailable){
     for(let key in data){
       const sheet = this.spreadSheet.getSheetByName(`${key}`)
       let ref = 0
