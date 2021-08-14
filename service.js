@@ -1,8 +1,15 @@
-const y = () => Logger.log(new CellsHours().getValuesForWeek())
 const letter = (index) => ['A','B','C','D','E','F'][index]
-const x = () => Logger.log(new SheetValidate('TR_ASIGNATURAS').validateKeys())
-const w = () => Logger.log(new DataSeccion().getValues())
-const z = () => new CalendarValues().insertSheet()
+const createObjectValues = (data, number) => {
+  const object = {}
+  data.forEach(row =>{
+      if(Object.keys(object).includes(`${row[number]}`)){
+        object[`${row[number]}`].push(row)
+      }else{
+        object[`${row[number]}`] = [row]
+      }
+    })
+  return object
+}
 
 class SheetValidate{
   constructor(name){
@@ -29,7 +36,8 @@ class SheetValidate{
 
 class CellsHours{
   constructor(name){
-    this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name)
+    this.spreadSheet = SpreadsheetApp.openById('1ICL5O_7FCoSTpUIwcZ8FlqiSS40aHgleRTj1QDSrtDc')
+    this.sheet = this.spreadSheet.getSheetByName(name)
     //Hora de salida podrías ser diferente 'A2:A15'
     this.headers = this.sheet.getRangeList(['B1:F1', 'A2:A15']).getRanges()
     this.days = this.headers[0].getValues()[0]
@@ -87,25 +95,11 @@ class DataSeccion{
     return this.groupTeacher(rangeValues)
   }
   groupSubjects(data){
-    const groups = {}
-    data.forEach(row =>{
-      if(Object.keys(groups).includes(`${row[3]}`)){
-        groups[`${row[3]}`].push(row)
-      }else{
-        groups[`${row[3]}`] = [row]
-      }
-    })
+    const groups = createObjectValues(data, 3)
     return groups
   }
   groupTeacher(data){
-    const teachers = {}
-    data.forEach(row =>{
-      if(Object.keys(teachers).includes(`${row[1]}`)){
-        teachers[`${row[1]}`].push(row)
-      }else{
-        teachers[`${row[1]}`] = [row]
-      }
-    })
+    const teachers = createObjectValues(data, 1)
     return teachers
   }
 }
@@ -117,7 +111,7 @@ class CalendarValues{
   insert(){
     const cellsAvailable = new CellsHours('ideas').getValuesForWeek()
     const data = new DataSeccion().getValues()
-    this.insertSheet(data)
+    //this.insertSheet(data)
     this.insertValuesForGroup(data, cellsAvailable)
   }
   insertSheet(data){
@@ -138,6 +132,32 @@ class CalendarValues{
     }
   }
 }
+
+class InformationTeacher{
+  constructor(){
+    this.information = new SheetValidate('TR_PROFESORES').validateKeys()
+  }
+  getData(){
+    const sheet = this.information['sheet']
+    const range = this.information['range']
+    const data = sheet.getRange(range[0], range[1], range[2], range[3]).getValues()
+    return this.cleanObject(data.slice(1,-1))
+  }
+  cleanObject(data){
+    const dataTeachers = createObjectValues(data, 0)
+    Object.keys(dataTeachers).forEach(key=>{
+      if(dataTeachers[`${key}`][0][6] && dataTeachers[`${key}`][0][6] != 'RESTRICCIONES'){
+        dataTeachers[`${key}`] = [dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6].replaceAll("`","'")]
+      }
+      else{
+        dataTeachers[`${key}`] = [dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6]]
+      }
+    })
+    return dataTeachers
+  }
+}
+
+
 
 
 
