@@ -48,8 +48,9 @@ class CellsHours{
     return spacesForWeek
   }
   getValuesForDay(){
-    //TODO
+    //TODO define values for day and define index of the day 
   }
+  
   validateSpaces(){
     const data = this.sheet.getRange('B2:F15').getValues()
     const hoursClass = []
@@ -82,8 +83,8 @@ class CellsHours{
 //Chercar el estado de cada una de las celdas
 //crear array u objeto con los valores de cada celda vacía
 class DataSeccion{
-  constructor(){
-    this.seccion = '4'
+  constructor(seccion){
+    this.seccion = seccion
     this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('TR_ASIGNATURAS')
   }
   getValues(){
@@ -92,7 +93,7 @@ class DataSeccion{
     const range = rangeData['range']
     const dataValues = sheet.getRange(range[0], range[1], range[2], range[3]).getValues()
     const rangeValues = dataValues.filter(row => row[4] == this.seccion)
-    return this.groupTeacher(rangeValues)
+    return this.groupSubjects(rangeValues)
   }
   groupSubjects(data){
     const groups = createObjectValues(data, 3)
@@ -108,16 +109,14 @@ class CalendarValues{
   constructor(){
     this.spreadSheet = SpreadsheetApp.openById('1ICL5O_7FCoSTpUIwcZ8FlqiSS40aHgleRTj1QDSrtDc')
   }
-  insert(){
-    const cellsAvailable = new CellsHours('ideas').getValuesForWeek()
+  getCells(name){
+    const cellsAvailable = new CellsHours(name).getValuesForWeek()
     const data = new DataSeccion().getValues()
-    //this.insertSheet(data)
-    this.insertValuesForGroup(data, cellsAvailable)
+    return cellsAvailable
+    //this.insertValuesForGroup(data, cellsAvailable)
   }
   insertSheet(data){
-    for(let key in data){
-      this.spreadSheet.insertSheet().setName(`${key}`)
-    }
+    data.forEach(group => this.spreadSheet.insertSheet().setName(`${group}`))
   }
   insertValuesForGroup(data, cellsAvailable){
     for(let key in data){
@@ -145,15 +144,30 @@ class InformationTeacher{
   }
   cleanObject(data){
     const dataTeachers = createObjectValues(data, 0)
+    const dataTeachersGrouped = {restrictions:[], normal:[]}
     Object.keys(dataTeachers).forEach(key=>{
-      if(dataTeachers[`${key}`][0][6] && dataTeachers[`${key}`][0][6] != 'RESTRICCIONES'){
-        dataTeachers[`${key}`] = [dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6].replaceAll("`","'")]
+      if(dataTeachers[`${key}`][0][6] != false){
+        dataTeachersGrouped['restrictions'].push(
+          ({[key]:[dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6].replaceAll("`","'")]}))
       }
       else{
-        dataTeachers[`${key}`] = [dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6]]
+        dataTeachersGrouped['normal'].push(({[key]:[dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6]]}))
       }
     })
-    return dataTeachers
+    return dataTeachersGrouped
+  }
+  order(){
+    /**
+    * 
+      const c = Object.keys(y).map(key => ({[key]:y[key]}))
+      c.sort((a, b)=>{
+        let teacherA = a[Object.keys(a)[0]][1]
+        let teacherB = b[Object.keys(b)[0]][1]
+        if(teacherA < teacherB) return -1
+        if(teacherA > teacherB) return 1
+        return 0
+})
+     */
   }
 }
 
