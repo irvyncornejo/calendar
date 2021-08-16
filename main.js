@@ -4,8 +4,8 @@ const createSchedules = () =>{
   const calendar = new CalendarValues()
   const dataSubjects = new DataSeccion('4').getValues()
   //calendar.insertSheet(groups)
-  //Logger.log(calendar.getCells('4010'))
-  Logger.log(informationTeacher)
+  //
+  calendar.insertValueRestric(dataSubjects, informationTeacher)
 }
 
 const inserValues= ()=>{
