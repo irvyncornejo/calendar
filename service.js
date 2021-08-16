@@ -130,15 +130,18 @@ class CalendarValues{
       })
     }
   }
-  insertValueRestric(group, dataSubjects, dataTeachers){
-    const sheet = this.spreadSheet.getSheetByName(`${group}`)
+  insertValueRestric(dataSubjects, dataTeachers){
     const teachersWithRes = dataTeachers['restrictions'].map(teacher => Object.keys(teacher)[0])
-    dataSubjects.forEach(teacher =>{
-      let firtsIndex = teachersWithRes.indexOf(teacher[1])
-      if(firtsIndex != -1 ){
-        let teacherRes = dataTeachers['restrictions'][firtsIndex][teacher[1]][1]['B']
-        teacher.forEach(hour=>{
-
+    teachersWithRes.forEach((teacher, index)=>{
+      let hoursTeacher = dataTeachers['restrictions'][index][`${teacher}`][1]['B']
+      if(dataSubjects[`${teacher}`].length == hoursTeacher.length || dataSubjects[`${teacher}`].length < hoursTeacher.length){
+        dataSubjects[`${teacher}`].forEach((hour, index)=>{
+          let hoursAvaliable = this.getCells(hour[3])
+          let indexHour = hoursAvaliable.indexOf(hoursTeacher[index]) 
+          if(indexHour != -1){
+            let sheet = this.spreadSheet.getSheetByName(`${hour[3]}`)
+            sheet.getRange(hoursTeacher[index]).setValue(hour[1])
+          }
         })
       }
     })
