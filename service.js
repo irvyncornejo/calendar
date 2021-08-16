@@ -93,7 +93,7 @@ class DataSeccion{
     const range = rangeData['range']
     const dataValues = sheet.getRange(range[0], range[1], range[2], range[3]).getValues()
     const rangeValues = dataValues.filter(row => row[4] == this.seccion)
-    return this.groupSubjects(rangeValues)
+    return this.groupTeacher(rangeValues)
   }
   groupSubjects(data){
     const groups = createObjectValues(data, 3)
@@ -122,13 +122,26 @@ class CalendarValues{
     for(let key in data){
       const sheet = this.spreadSheet.getSheetByName(`${key}`)
       let ref = 0
-      data[`${key}`].forEach((row, index)=>{
-        Array.from(Array(row[6]).keys()).forEach(x => {
+      data[`${key}`].forEach(row=>{
+        Array.from(Array(row[6]).keys()).forEach(times=>{
           sheet.getRange(`${cellsAvailable[ref]}`).setValue(`${row[2]}`)
           ref+=1
         })
       })
     }
+  }
+  insertValueRestric(group, dataSubjects, dataTeachers){
+    const sheet = this.spreadSheet.getSheetByName(`${group}`)
+    const teachersWithRes = dataTeachers['restrictions'].map(teacher => Object.keys(teacher)[0])
+    dataSubjects.forEach(teacher =>{
+      let firtsIndex = teachersWithRes.indexOf(teacher[1])
+      if(firtsIndex != -1 ){
+        let teacherRes = dataTeachers['restrictions'][firtsIndex][teacher[1]][1]['B']
+        teacher.forEach(hour=>{
+
+        })
+      }
+    })
   }
 }
 
@@ -148,7 +161,7 @@ class InformationTeacher{
     Object.keys(dataTeachers).forEach(key=>{
       if(dataTeachers[`${key}`][0][6] != false){
         dataTeachersGrouped['restrictions'].push(
-          ({[key]:[dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6].replaceAll("`","'")]}))
+          ({[key]:[dataTeachers[`${key}`][0][1], JSON.parse(dataTeachers[`${key}`][0][6])]}))
       }
       else{
         dataTeachersGrouped['normal'].push(({[key]:[dataTeachers[`${key}`][0][1], dataTeachers[`${key}`][0][6]]}))
@@ -156,18 +169,15 @@ class InformationTeacher{
     })
     return dataTeachersGrouped
   }
-  order(){
-    /**
-    * 
-      const c = Object.keys(y).map(key => ({[key]:y[key]}))
-      c.sort((a, b)=>{
-        let teacherA = a[Object.keys(a)[0]][1]
-        let teacherB = b[Object.keys(b)[0]][1]
-        if(teacherA < teacherB) return -1
-        if(teacherA > teacherB) return 1
-        return 0
-})
-     */
+  order(data){
+    //TODO Definir la cantidad de restricciones o definir prioridades
+    data['restrictions'].sort((a, b)=>{
+      let teacherA = a[Object.keys(a)[0]][1]
+      let teacherB = b[Object.keys(b)[0]][1]
+      if(teacherA < teacherB) return -1
+      if(teacherA > teacherB) return 1
+      return 0
+    })
   }
 }
 
