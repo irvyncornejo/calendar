@@ -1,27 +1,7 @@
 {
-  "timeZone": "America/New_York",
+  "timeZone": "America/Mexico_City",
   "dependencies": {
   },
-  "oauthScopes": ["https://www.googleapis.com/auth/spreadsheets"],
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8",
-  "sheets": {
-    "macros": [{
-      "menuName": "Validación númerica",
-      "functionName": "myFunction",
-      "defaultShortcut": "Ctrl+Alt+Shift+1"
-    }, {
-      "menuName": "Macro sin título",
-      "functionName": "myFunction1",
-      "defaultShortcut": "Ctrl+Alt+Shift+2"
-    }, {
-      "menuName": "Macro sin título 1",
-      "functionName": "myFunction2",
-      "defaultShortcut": "Ctrl+Alt+Shift+3"
-    }, {
-      "menuName": "Macro sin título 2",
-      "functionName": "myFunction3",
-      "defaultShortcut": "Ctrl+Alt+Shift+6"
-    }]
-  }
+  "runtimeVersion": "V8"
 }
