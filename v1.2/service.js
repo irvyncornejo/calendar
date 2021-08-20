@@ -1,87 +1,22 @@
-const test = () =>{
-  const values = new GeneralInfo().createValues()
-  createProperties(values)
-}
-
-const test2 = () =>{
-  const properties = PropertiesService.getScriptProperties()
-  const values = properties.getProperties()
-  for(key in values){
-    Logger.log(values[key])
-  }
-}
-
 const letter = (index) => ['B','C','D','E','F'][index]
 
-const createProperties = (values) => {
-  const scritpProps = PropertiesService.getScriptProperties()
-  for(key in values){
-    scritpProps.setProperty(key, JSON.stringify(values[key]))
+class PropertiesU{
+  constructor(){
+    this.userProps = PropertiesService.getUserProperties()
   }
-}
-
-const createValuesKeys = (data) =>{
-  const keys = data[0]
-  const values = data.slice(1,-1)
-  const elements = []
-  values.map(teacher=>{
-    let infoTeacher = {}
-    keys.forEach((key, index)=>{
-      infoTeacher[`${key}`] = teacher[index]
-    })
-    elements.push(infoTeacher)
-  })
-  return elements
-}
-
-const defineRangeHours = (teacher) =>{
-  const hours = [1,2,3,4,5]//TODO valor dependiendo las horas que defina la persona
-  const indexDay = ['L', 'Ma', 'Mr', 'J', 'V']
-  const defineValues = (letterInd) => hours.map(hour => `${letterInd}${hour}`)
-  const hoursAvaliable = []
-  indexDay.forEach((day, index)=>{
-    let letterInd = letter(index)
-    teacher[`${day}`] ? hoursAvaliable.push(...defineValues(letterInd)) : ''
-  })
-  indexDay.forEach(day => delete teacher[`${day}`])
-  return hoursAvaliable
-}
-
-const createRangeAvaliable = (data, keys) =>{
-  data.forEach(teacher=>{
-    teacher['hoursAvaliable'] = defineRangeHours(teacher)
-  })
-  return groupSubjects(data, keys)
-}
-
-const groupSubjects = (data, keys) =>{
-  const rePrincipal = /^Asignatura [0-9]$/
-  const subjects = keys.filter(key => rePrincipal.test(key))
-  const subjectsTeacher = {}
-  subjects.forEach(value =>{
-    subjectsTeacher[`${value}`] = keys.filter(key => key.includes(value))
-  })
-  return addSubjects(data, subjectsTeacher)
-}
-
-const addSubjects = (data, subjectsTeacher) =>{
-  const subjectsKeys = Object.keys(subjectsTeacher)
-  data.forEach(teacher=>{
-    let subjects = {}
-    subjectsKeys.forEach(key=>{
-      subjects[`${key}`] = {
-        name : teacher[subjectsTeacher[`${key}`][0]],
-        sessions: teacher[subjectsTeacher[`${key}`][1]],
-        section: teacher[subjectsTeacher[`${key}`][2]],
-        grade: teacher[subjectsTeacher[`${key}`][3]]
+  getProperties(key){
+    const values = this.userProps.getProperties()
+    return JSON.parse(values[key])
+  }
+  createProperties(values){
+    if(Array.isArray(values)){
+      this.userProps.setProperty(values[0], values[1])
+    }else{
+      for(key in values){
+        this.userProps.setProperty(key, JSON.stringify(values[key]))
       }
-      delete teacher[`${key}`]
-      delete teacher[`${key}|Clases a la semana`]
-      delete teacher[`${key}|Sección`]
-    })
-    teacher['subjects'] = subjects
-  })
-  return data
+    }
+  }
 }
 
 class SheetValidate{
@@ -138,6 +73,7 @@ class GeneralInfo{
     return this.getSections(sections)
   }
   getSections(sections){
+    //TODO CAMBIAR POR VALORES DINAMICOS
     const ranges = {'Jardín de Niños': 'B16:H18','Primaria':'B22:H27', 'Secundaria':'B31:H33', 'Preparatoria':'B37:H39'} 
     Object.keys(ranges).forEach((key, index) =>{
       let values = this.sheet.getRange(ranges[`${key}`]).getValues()
@@ -149,5 +85,102 @@ class GeneralInfo{
       sections[`${key}`]['num'] = index+1
     })
     return sections
+  }
+}
+
+class InformationTeachers{
+  constructor(name='Config Profesores'){
+    this.info = new SheetValidate(name).validateKeys()
+  }
+  loadData(){
+    const range = this.info['range']
+    const data = this.info['sheet'].getRange(range[0], range[1], range[2], range[3]).getValues()
+    const keys = data[0]
+    const teachers = this.createValuesKeys(data)
+    return this.createRangeAvaliable(teachers, keys)
+  }
+  createValuesKeys(data){
+    const keys = data[0]
+    const values = data.slice(1,-1)
+    const elements = []
+    values.map(teacher=>{
+      let infoTeacher = {}
+      keys.forEach((key, index)=>{
+        infoTeacher[`${key}`] = teacher[index]
+      })
+      elements.push(infoTeacher)
+    })
+    return elements
+  }
+  createRangeAvaliable(data, keys){
+    data.forEach(teacher=>{
+      teacher['hoursAvaliable'] = this.defineRangeHours(teacher)
+    })
+    return this.groupSubjects(data, keys)
+  }
+
+  groupSubjects(data, keys){
+    const rePrincipal = /^Asignatura [0-9]$/
+    const subjects = keys.filter(key => rePrincipal.test(key))
+    const subjectsTeacher = {}
+    subjects.forEach(value =>{
+      subjectsTeacher[`${value}`] = keys.filter(key => key.includes(value))
+    })
+    return this.addSubjects(data, subjectsTeacher)
+}
+
+  addSubjects(data, subjectsTeacher){
+    const subjectsKeys = Object.keys(subjectsTeacher)
+    data.forEach(teacher=>{
+      let subjects = {}
+      subjectsKeys.forEach(key=>{
+        subjects[`${key}`] = {
+          name : teacher[subjectsTeacher[`${key}`][0]],
+          sessions: teacher[subjectsTeacher[`${key}`][1]],
+          section: teacher[subjectsTeacher[`${key}`][2]],
+          grade: teacher[subjectsTeacher[`${key}`][3]]
+        }
+        delete teacher[`${key}`]
+        delete teacher[`${key}|Clases a la semana`]
+        delete teacher[`${key}|Sección`]
+      })
+      teacher['subjects'] = subjects
+    })
+    return data
+  }
+  defineRangeHours(teacher){
+    const hours = [1,2,3,4,5]//TODO valor dependiendo las horas que defina la persona
+    const indexDay = ['L', 'Ma', 'Mr', 'J', 'V']
+    const defineValues = (letterInd) => hours.map(hour => `${letterInd}${hour}`)
+    const hoursAvaliable = []
+    indexDay.forEach((day, index)=>{
+      let letterInd = letter(index)
+      teacher[`${day}`] ? hoursAvaliable.push(...defineValues(letterInd)) : ''
+    })
+    indexDay.forEach(day => delete teacher[`${day}`])
+    return hoursAvaliable
+  }
+}
+
+class DataSeccion{
+  constructor(seccion){
+    this.seccion = seccion
+    this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('TR_ASIGNATURAS')
+  }
+  getValues(){
+    const rangeData = new SheetValidate('TR_ASIGNATURAS').validateKeys()
+    const sheet = rangeData['sheet']
+    const range = rangeData['range']
+    const dataValues = sheet.getRange(range[0], range[1], range[2], range[3]).getValues()
+    const rangeValues = dataValues.filter(row => row[4] == this.seccion)
+    return this.groupTeacher(rangeValues)
+  }
+  
+  groupSubjects(data){
+    return createObjectValues(data, 3)
+  }
+
+  groupTeacher(data){
+    return createObjectValues(data, 1)
   }
 }
