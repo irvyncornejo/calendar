@@ -12,7 +12,7 @@ class PropertiesU{
     if(Array.isArray(values)){
       this.userProps.setProperty(values[0], values[1])
     }else{
-      for(key in values){
+      for(let key in values){
         this.userProps.setProperty(key, JSON.stringify(values[key]))
       }
     }
@@ -133,6 +133,7 @@ class InformationTeachers{
     const subjectsKeys = Object.keys(subjectsTeacher)
     data.forEach(teacher=>{
       let subjects = {}
+      let sections = []
       subjectsKeys.forEach(key=>{
         subjects[`${key}`] = {
           name : teacher[subjectsTeacher[`${key}`][0]],
@@ -140,11 +141,13 @@ class InformationTeachers{
           section: teacher[subjectsTeacher[`${key}`][2]],
           grade: teacher[subjectsTeacher[`${key}`][3]]
         }
+        teacher[subjectsTeacher[`${key}`][2]] =! '' ? sections.push(teacher[subjectsTeacher[`${key}`][2]]) : ''
         delete teacher[`${key}`]
         delete teacher[`${key}|Clases a la semana`]
         delete teacher[`${key}|Sección`]
       })
       teacher['subjects'] = subjects
+      teacher['sections'] = sections
     })
     return data
   }
@@ -162,25 +165,79 @@ class InformationTeachers{
   }
 }
 
-class DataSeccion{
-  constructor(seccion){
-    this.seccion = seccion
-    this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('TR_ASIGNATURAS')
+class CellsHours{
+  constructor(spreadSheet){
+    this.spreadSheet = spreadSheet
+    //Hora de salida podrías ser diferente 'A2:A15'
   }
-  getValues(){
-    const rangeData = new SheetValidate('TR_ASIGNATURAS').validateKeys()
-    const sheet = rangeData['sheet']
-    const range = rangeData['range']
-    const dataValues = sheet.getRange(range[0], range[1], range[2], range[3]).getValues()
-    const rangeValues = dataValues.filter(row => row[4] == this.seccion)
-    return this.groupTeacher(rangeValues)
+  getValuesForWeek(name){
+    const spacesForWeek = this.validateSpaces(name)
+    return spacesForWeek
+  }
+  getValuesForDay(name){
+    const indexDays = ['B','C','D','E','F']
+    const spacesForWeek =  this.validateSpaces(name)
+    const spacesForDays = {}
+    indexDays.forEach(day =>{
+      let days = spacesForWeek.filter(cell => cell.includes(day))
+      spacesForDays[`${day}`] = days
+    })
+    return spacesForDays
   }
   
-  groupSubjects(data){
-    return createObjectValues(data, 3)
-  }
-
-  groupTeacher(data){
-    return createObjectValues(data, 1)
+  validateSpaces(name){
+    const sheet = this.spreadSheet.getSheetByName(name)
+    const data = sheet.getRange('B2:F15').getValues()
+    const hoursClass = []
+    const cells= (row, hourIndex) => row.forEach((cell, index)=>{
+        cell === ''
+          ? hoursClass.push(`${letter(index)}${hourIndex+2}`)
+          : ''
+    })
+    data.forEach((row, index) =>{
+      const hourIndex = index
+      index === 4 || index === 9 
+        ? ''  
+        : cells(row, hourIndex)
+    })
+    return hoursClass
   }
 }
+
+class Schedule{
+  constructor(section){
+    this.section = section
+    this.spreadSheet = SpreadsheetApp.getActiveSpreadsheet()
+    this.cellsForGroup = new CellsHours(this.spreadSheet)
+  }
+  getDataSection(){
+    const properties = new PropertiesU()
+    const dataTeachers = properties.getProperties('dataInfoTeachers')
+    const dataSection = properties.getProperties(this.section)
+    const teachers = dataTeachers.filter(row => row['sections'].includes(this.section))
+    return {dataSection:dataSection, teachers:teachers}
+  }
+
+  getDataForGroup(){
+    const cells = this.cellsForGroup.getValuesForWeek('101')
+    return cells
+  }
+
+  create(){
+    const data = this.getDataSection()
+    Logger.log(this.getDataForGroup())
+    //this.insertSheet(data['dataSection']['grades'])
+  }
+
+  insertSheet(grades){
+    const sheets = this.spreadSheet.getSheets().map(sheet => sheet.getName())
+    for(let grade in grades){
+      grades[`${grade}`].forEach(group => 
+        sheets.includes(`${group}`) 
+        ? ''
+        : this.spreadSheet.insertSheet().setName(`${group}`))
+    }
+  }
+  
+}
+

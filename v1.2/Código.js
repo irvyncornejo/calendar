@@ -6,9 +6,18 @@ const onOpen = () => {
 
 const loadData = () => {
   const propertiesUser = new PropertiesU()
-  const data = new InformationTeachers().loadData()
-  propertiesUser.createProperties(['data', JSON.stringify(data)])
-  
+  const dataInfoTeachers = new InformationTeachers().loadData()
+  const dataInfoGeneral = new GeneralInfo().createValues()
+  propertiesUser.createProperties(['dataInfoTeachers', JSON.stringify(dataInfoTeachers)])
+  propertiesUser.createProperties(dataInfoGeneral)
 }
 
+const schedulePrim = () => new Schedule('Primaria').create() 
+
+const showProperties = () =>{
+  const propertiesUser = PropertiesService.getUserProperties()
+  for (key in propertiesUser.getProperties()){
+    Logger.log(key)
+  }
+}
 
