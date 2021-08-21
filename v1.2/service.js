@@ -152,7 +152,7 @@ class InformationTeachers{
     return data
   }
   defineRangeHours(teacher){
-    const hours = [1,2,3,4,5]//TODO valor dependiendo las horas que defina la persona
+    const hours = [2,3,4,5,7,8,10,12,13,14,15]//TODO valor dependiendo las horas que defina la persona
     const indexDay = ['L', 'Ma', 'Mr', 'J', 'V']
     const defineValues = (letterInd) => hours.map(hour => `${letterInd}${hour}`)
     const hoursAvaliable = []
@@ -218,15 +218,36 @@ class Schedule{
     return {dataSection:dataSection, teachers:teachers}
   }
 
-  getDataForGroup(){
-    const cells = this.cellsForGroup.getValuesForWeek('101')
+  getDataForGroup(group){
+    const cells = this.cellsForGroup.getValuesForWeek(group)
     return cells
   }
 
   create(){
-    const data = this.getDataSection()
-    Logger.log(this.getDataForGroup())
-    //this.insertSheet(data['dataSection']['grades'])
+    const dataForSection = this.getDataSection()
+    const grades = dataForSection['dataSection']['grades']
+    const teachers = this.groupForGrade(dataForSection['teachers'], grades)
+    this.insertSheet(dataForSection['dataSection']['grades'])
+    this.insertValuesForSection(teachers, grades)
+    //Logger.log(this.getDataForGroup('201'))
+    
+  }
+
+  groupForGrade(teachers, grades){
+    const teachersForgrade = {}
+    for(let grade in grades){
+      const teachersList = []
+      teachers.forEach(teacher =>{
+        Object.keys(teacher['subjects']).forEach(a =>{
+          teacher['subjects'][a]['section'] === this.section 
+          && teacher['subjects'][a]['grade'] == grade
+            ? teachersList.push(teacher)
+            : ''
+        })
+      })
+      teachersForgrade[`${grade}`] = teachersList
+    }
+    return teachersForgrade
   }
 
   insertSheet(grades){
@@ -238,6 +259,32 @@ class Schedule{
         : this.spreadSheet.insertSheet().setName(`${group}`))
     }
   }
-  
+
+  insertValuesForSection(teachers, grades){
+    for(let grade in grades){
+      const group = grades[`${grade}`][0]
+      const sheet = this.spreadSheet.getSheetByName(group)
+      let cellsAvaliableForGroup = this.getDataForGroup(group)
+      Logger.log(cellsAvaliableForGroup)
+      teachers[`${grade}`].forEach(teacher =>{
+        let teachersHours = teacher['hoursAvaliable']
+        Object.keys(teacher['subjects']).forEach(subject =>{   
+          if(teacher['subjects'][`${subject}`]['grade'] == grade){
+            Array.from(Array(teacher['subjects'][`${subject}`]['sessions']).keys()).forEach(hour =>{
+              let indexCell = cellsAvaliableForGroup.indexOf(teachersHours[0])
+              Logger.log(indexCell)
+              if(indexCell != -1){
+                Logger.log('Valor dentro del indice')
+                sheet.getRange(`${teachersHours[0]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
+                teachersHours.splice(0,1)
+                cellsAvaliableForGroup.splice(indexCell, 1)
+              }
+            })
+          }
+        })
+      })
+    }
+  }
+  //insertCellValue()
 }
 

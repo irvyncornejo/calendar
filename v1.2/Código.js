@@ -1,7 +1,12 @@
 const onOpen = () => {
   const ui = SpreadsheetApp.getUi()
-  ui.createMenu('📅 Horarios').addItem('🛠 Generar','someFunction').addToUi()
-  
+  ui.createMenu('📅 Horarios')
+    .addItem('🛠 Cargar Datos','loadData')
+    .addSeparator()
+      .addSubMenu(ui.createMenu('Crear')
+        .addItem('Primaria', 'schedulePrim')
+        .addItem('Secundaria', 'myThirdFunction'))
+    .addToUi()
 }
 
 const loadData = () => {
