@@ -76,15 +76,61 @@ class GeneralInfo{
     //TODO CAMBIAR POR VALORES DINAMICOS
     const ranges = {'Jardín de Niños': 'B16:H18','Primaria':'B22:H27', 'Secundaria':'B31:H33', 'Preparatoria':'B37:H39'} 
     Object.keys(ranges).forEach((key, index) =>{
-      let values = this.sheet.getRange(ranges[`${key}`]).getValues()
-      let grades = {}
+      const values = this.sheet.getRange(ranges[`${key}`]).getValues()
+      const grades = {}
       values.forEach(grade =>
         grades[`${grade[0]}`] = grade.filter((elem, index) => index > 0 && elem > '' )
       )
       sections[`${key}`]['grades'] = grades
       sections[`${key}`]['num'] = index+1
     })
-    return sections
+    const subjectsForSection =  this.getSubjects()
+    return {sections:sections, subjectsForSection:subjectsForSection}
+  }
+  getSubjects(){
+    const dataSubjects = new SheetValidate('Config Profesores').validateKeys()
+    const columnsSubjects = []
+    dataSubjects['keys'].forEach((key, index)=> key.includes('Asignatura') 
+      ? columnsSubjects.push(`${index}|${key}`)
+      : ''
+    )
+    const length = columnsSubjects.length
+    const sheet = dataSubjects['sheet']
+    const columnStart = parseInt(columnsSubjects[0].split('|')[0])
+    const subjectsForSection = {}
+    const values = sheet.getRange(1,
+      `${columnStart + 1}`, 
+      dataSubjects.range[3], 
+      `${parseInt(columnsSubjects[length-2].split('|')[0]) - columnStart + 2}`).getValues()
+    const rows = 5
+    const valuesClean = []
+    values.slice(1,-1).forEach(row =>{
+      let start = 0
+      while(start < length-1){
+        if(row[start] != '' && row[start] != undefined){
+          valuesClean.push(row.slice(start, start+rows))
+        }
+        start+=rows
+      }
+    })
+    valuesClean.forEach(row =>{
+      const section = `subjects|${row[3]}`
+      if(Object.keys(subjectsForSection).includes(section)){
+        if(Object.keys(subjectsForSection[section]).includes(`${row[4]}`)){
+          if(!subjectsForSection[section][`${row[4]}`].includes(row[0])){
+            subjectsForSection[section][`${row[4]}`].push(row[0])
+          }
+        }
+        else{
+          subjectsForSection[section][`${row[4]}`] = [row[0]]
+        }
+      }
+      else{
+        subjectsForSection[section] = {}
+        subjectsForSection[section][`${row[4]}`] = [row[0]]
+      }
+    })
+    return subjectsForSection
   }
 }
 
@@ -138,10 +184,11 @@ class InformationTeachers{
         subjects[`${key}`] = {
           name : teacher[subjectsTeacher[`${key}`][0]],
           sessions: teacher[subjectsTeacher[`${key}`][1]],
-          section: teacher[subjectsTeacher[`${key}`][2]],
-          grade: teacher[subjectsTeacher[`${key}`][3]]
+          blocks: teacher[subjectsTeacher[`${key}`][2]],
+          section: teacher[subjectsTeacher[`${key}`][3]],
+          grade: teacher[subjectsTeacher[`${key}`][4]]
         }
-        teacher[subjectsTeacher[`${key}`][2]] =! '' ? sections.push(teacher[subjectsTeacher[`${key}`][2]]) : ''
+        teacher[subjectsTeacher[`${key}`][3]] =! '' ? sections.push(teacher[subjectsTeacher[`${key}`][3]]) : ''
         delete teacher[`${key}`]
         delete teacher[`${key}|Clases a la semana`]
         delete teacher[`${key}|Sección`]
@@ -149,10 +196,11 @@ class InformationTeachers{
       teacher['subjects'] = subjects
       teacher['sections'] = sections
     })
+    Logger.log(data[3])
     return data
   }
   defineRangeHours(teacher){
-    const hours = [2,3,4,5,7,8,10,12,13,14,15]//TODO valor dependiendo las horas que defina la persona
+    const hours = [2,3,4,6,7,8,10,12]//TODO valor dependiendo las horas que defina la persona
     const indexDay = ['L', 'Ma', 'Mr', 'J', 'V']
     const defineValues = (letterInd) => hours.map(hour => `${letterInd}${hour}`)
     const hoursAvaliable = []
@@ -229,12 +277,10 @@ class Schedule{
     const teachers = this.groupForGrade(dataForSection['teachers'], grades)
     this.insertSheet(dataForSection['dataSection']['grades'])
     this.insertValuesForSection(teachers, grades)
-    //Logger.log(this.getDataForGroup('201'))
-    
   }
 
   groupForGrade(teachers, grades){
-    const teachersForgrade = {}
+    const teachersForGrade = {}
     for(let grade in grades){
       const teachersList = []
       teachers.forEach(teacher =>{
@@ -245,18 +291,22 @@ class Schedule{
             : ''
         })
       })
-      teachersForgrade[`${grade}`] = teachersList
+      teachersForGrade[`${grade}`] = teachersList
     }
-    return teachersForgrade
+    return teachersForGrade
   }
 
   insertSheet(grades){
     const sheets = this.spreadSheet.getSheets().map(sheet => sheet.getName())
     for(let grade in grades){
-      grades[`${grade}`].forEach(group => 
-        sheets.includes(`${group}`) 
-        ? ''
-        : this.spreadSheet.insertSheet().setName(`${group}`))
+      grades[`${grade}`].forEach(group =>{
+        if(sheets.includes(`${group}`)){
+          return 0
+        }else{
+          const sheet = this.spreadSheet.getSheetByName('Hoja Base Horario').copyTo(this.spreadSheet)
+          sheet.setName(`${group}`)
+        }
+      })
     }
   }
 
@@ -265,19 +315,17 @@ class Schedule{
       const group = grades[`${grade}`][0]
       const sheet = this.spreadSheet.getSheetByName(group)
       let cellsAvaliableForGroup = this.getDataForGroup(group)
-      Logger.log(cellsAvaliableForGroup)
       teachers[`${grade}`].forEach(teacher =>{
         let teachersHours = teacher['hoursAvaliable']
         Object.keys(teacher['subjects']).forEach(subject =>{   
           if(teacher['subjects'][`${subject}`]['grade'] == grade){
             Array.from(Array(teacher['subjects'][`${subject}`]['sessions']).keys()).forEach(hour =>{
-              let indexCell = cellsAvaliableForGroup.indexOf(teachersHours[0])
-              Logger.log(indexCell)
-              if(indexCell != -1){
-                Logger.log('Valor dentro del indice')
-                sheet.getRange(`${teachersHours[0]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
-                teachersHours.splice(0,1)
-                cellsAvaliableForGroup.splice(indexCell, 1)
+              let indexsCells = indexCells(teachersHours, cellsAvaliableForGroup) 
+              if(indexsCells['indexTeacherHour']){
+                let ind = indexsCells['indexTeacherHour']
+                sheet.getRange(`${teachersHours[ind]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
+                teachersHours.splice(ind,1)
+                cellsAvaliableForGroup.splice(indexsCells['indexAvaliableHour'], 1)
               }
             })
           }
@@ -285,6 +333,8 @@ class Schedule{
       })
     }
   }
-  //insertCellValue()
+  insertCellValue(){
+    
+  }
 }
 
