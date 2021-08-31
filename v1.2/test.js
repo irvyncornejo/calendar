@@ -1,8 +1,8 @@
 const t = {'s':['q','e','t'],'r':['c','v','b']}
 
 const buscar = (valores,letra) =>{
-let index
-let key
+  let index
+  let key
   for(key in valores){
     index = valores[key].indexOf(letra)
     if(index != -1) break
@@ -20,7 +20,7 @@ const indexCells = (hoursTeacher, hoursAvaliables) =>{
     indexAvaliableHour = hoursAvaliables.indexOf(hoursTeacher[hour])
     if (indexAvaliableHour != -1){
       indexTeacherHour = hour
-      break;
+      break
     }
   }
   return {indexTeacherHour:indexTeacherHour, indexAvaliableHour:indexAvaliableHour}

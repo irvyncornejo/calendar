@@ -196,7 +196,6 @@ class InformationTeachers{
       teacher['subjects'] = subjects
       teacher['sections'] = sections
     })
-    Logger.log(data[3])
     return data
   }
   defineRangeHours(teacher){
@@ -317,24 +316,47 @@ class Schedule{
       let cellsAvaliableForGroup = this.getDataForGroup(group)
       teachers[`${grade}`].forEach(teacher =>{
         let teachersHours = teacher['hoursAvaliable']
-        Object.keys(teacher['subjects']).forEach(subject =>{   
-          if(teacher['subjects'][`${subject}`]['grade'] == grade){
-            Array.from(Array(teacher['subjects'][`${subject}`]['sessions']).keys()).forEach(hour =>{
-              let indexsCells = indexCells(teachersHours, cellsAvaliableForGroup) 
-              if(indexsCells['indexTeacherHour']){
-                let ind = indexsCells['indexTeacherHour']
-                sheet.getRange(`${teachersHours[ind]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
-                teachersHours.splice(ind,1)
-                cellsAvaliableForGroup.splice(indexsCells['indexAvaliableHour'], 1)
-              }
-            })
+        Object.keys(teacher['subjects']).forEach(subject =>{
+          let dataSubject = teacher['subjects'][`${subject}`]
+          if(dataSubject['grade'] == grade && dataSubject['sessions'] > ''){
+            //CHECAR SI EL ALGORITMO PARA LA INSERCIÓN MULTIPLE ES FUNCIONAL
+            this.insertCellValue(teacher, subject, teachersHours, cellsAvaliableForGroup, sheet)
           }
         })
       })
     }
   }
-  insertCellValue(){
-    
+  
+  insertCellValue(teacher, subject, teachersHours, cellsAvaliableForGroup, sheet){
+    let numberSessions = parseInt(teacher['subjects'][`${subject}`]['sessions'])
+    Array.from(Array(numberSessions).keys()).forEach(elem=>{
+      let indexsCells = this.indexCells(teachersHours, cellsAvaliableForGroup)
+      if(indexsCells['indexTeacherHour']){
+        let ind = indexsCells['indexTeacherHour']
+        sheet.getRange(`${teachersHours[ind]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
+        teachersHours.splice(ind,1)
+        cellsAvaliableForGroup.splice(indexsCells['indexAvaliableHour'], 1)
+      }
+    })
   }
+
+  validateSessions(){
+
+  }
+
+  indexCells(hoursTeacher, hoursAvaliables){
+    let indexTeacherHour
+    let indexAvaliableHour
+    for(const hour in hoursTeacher){
+      indexAvaliableHour = hoursAvaliables.indexOf(hoursTeacher[hour])
+      if (indexAvaliableHour != -1){
+        indexTeacherHour = hour
+        break
+      }
+    }
+    return {indexTeacherHour:indexTeacherHour, indexAvaliableHour:indexAvaliableHour}
+  }
+
+
 }
 
