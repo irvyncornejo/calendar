@@ -1,4 +1,14 @@
-const letter = (index) => ['B','C','D','E','F'][index]
+const letter = (index) => {
+  index = parseInt(index)
+  const letters = ['B','C','D','E','F']
+  const l = letters.length - 1
+  if(l < index){
+    return letters[index]
+  }else{
+    let num = l - index  < 0 ? (-1)*(l - index) : l - index  
+    return letters[num]
+  }
+}
 
 class PropertiesU{
   constructor(){
@@ -208,7 +218,7 @@ class InformationTeachers{
       teacher[`${day}`] ? hoursAvaliable.push(...defineValues(letterInd)) : ''
     })
     indexDay.forEach(day => delete teacher[`${day}`])
-    return hoursAvaliable
+    return hoursAvaliable.sort()
   }
 }
 
@@ -247,7 +257,7 @@ class CellsHours{
         ? ''  
         : cells(row, hourIndex)
     })
-    return hoursClass
+    return hoursClass.sort()
   }
 }
 
@@ -266,7 +276,7 @@ class Schedule{
   }
 
   getDataForGroup(group){
-    const cells = this.cellsForGroup.getValuesForWeek(group)
+    const cells = this.cellsForGroup.getValuesForDay(group)
     return cells
   }
 
@@ -294,54 +304,99 @@ class Schedule{
     }
     return teachersForGrade
   }
+  validateSheets(sheets, name){
+    if(sheets.includes(`${name}`)){
+      return 0
+    }else{
+      const sheet = this.spreadSheet.getSheetByName('Hoja Base Horario').copyTo(this.spreadSheet)
+      sheet.setName(`${name}`)
+    }
+  }
 
   insertSheet(grades){
     const sheets = this.spreadSheet.getSheets().map(sheet => sheet.getName())
-    for(let grade in grades){
-      grades[`${grade}`].forEach(group =>{
-        if(sheets.includes(`${group}`)){
-          return 0
-        }else{
-          const sheet = this.spreadSheet.getSheetByName('Hoja Base Horario').copyTo(this.spreadSheet)
-          sheet.setName(`${group}`)
-        }
-      })
+    if(typeof(grades) === 'string'){
+      this.validateSheets(sheets, grades)
+    }else{
+      for(let grade in grades){
+        grades[`${grade}`].forEach(group =>{
+          this.validateSheets(sheets, group)
+        })
+      }
     }
   }
 
   insertValuesForSection(teachers, grades){
-    for(let grade in grades){
-      const group = grades[`${grade}`][0]
-      const sheet = this.spreadSheet.getSheetByName(group)
-      let cellsAvaliableForGroup = this.getDataForGroup(group)
-      teachers[`${grade}`].forEach(teacher =>{
-        let teachersHours = teacher['hoursAvaliable']
-        Object.keys(teacher['subjects']).forEach(subject =>{
-          let dataSubject = teacher['subjects'][`${subject}`]
-          if(dataSubject['grade'] == grade && dataSubject['sessions'] > ''){
-            //CHECAR SI EL ALGORITMO PARA LA INSERCIÓN MULTIPLE ES FUNCIONAL
-            this.insertCellValue(teacher, subject, teachersHours, cellsAvaliableForGroup, sheet)
-          }
+    try{
+      for(let grade in grades){
+        const group = grades[`${grade}`][0]
+        const sheet = this.spreadSheet.getSheetByName(group)
+        let cellsAvaliableForGroup = this.getDataForGroup(group)
+        teachers[`${grade}`].forEach(teacher =>{
+          let teachersHours = teacher['hoursAvaliable']
+          this.insertSheet(`${teacher['Nombre']} ${teacher['Apellidos']}`)
+          Object.keys(teacher['subjects']).forEach(subject =>{
+            let dataSubject = teacher['subjects'][`${subject}`]
+            if(dataSubject['grade'] == grade && dataSubject['sessions'] > ''){
+              //CHECAR SI EL ALGORITMO PARA LA INSERCIÓN MULTIPLE ES FUNCIONAL
+              this.insertCellValue(teacher, subject, teachersHours, cellsAvaliableForGroup, sheet)
+            }
+          })
         })
-      })
+      }
+    }catch(e){
+      return e
     }
   }
-  
+
   insertCellValue(teacher, subject, teachersHours, cellsAvaliableForGroup, sheet){
-    let numberSessions = parseInt(teacher['subjects'][`${subject}`]['sessions'])
-    Array.from(Array(numberSessions).keys()).forEach(elem=>{
-      let indexsCells = this.indexCells(teachersHours, cellsAvaliableForGroup)
-      if(indexsCells['indexTeacherHour']){
+    try{
+      let numberSessions = parseInt(teacher['subjects'][`${subject}`]['sessions'])
+      //[...Array(numberSessions).keys()]
+      Array.from(Array(numberSessions).keys()).forEach(elem=>{
+        let dayKey = letter(elem)
+        let indexsCells = this.indexCellsForDay(teachersHours, cellsAvaliableForGroup, dayKey)
         let ind = indexsCells['indexTeacherHour']
-        sheet.getRange(`${teachersHours[ind]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
-        teachersHours.splice(ind,1)
-        cellsAvaliableForGroup.splice(indexsCells['indexAvaliableHour'], 1)
-      }
-    })
+        if(ind){
+          sheet.getRange(`${teachersHours[ind]}`).setValue(`${teacher['subjects'][`${subject}`]['name']}`)
+          this.insertValueTeacherSheet(`${teacher['Nombre']} ${teacher['Apellidos']}`, `${teachersHours[ind]}`, `${teacher['subjects'][`${subject}`]['name']}`)
+          teachersHours.splice(ind,1)
+          cellsAvaliableForGroup[`${indexsCells['keyAvaliableHour']}`].splice(indexsCells['indexAvaliableHour'], 1)
+        }
+      })
+    }catch(e){
+      return e
+    }
+  }
+  insertValueTeacherSheet(name, range, value){
+    const sheet = this.spreadSheet.getSheetByName(name)
+    sheet.getRange(range).setValue(value)
   }
 
-  validateSessions(){
+  searchCellForDay(valores, letra){
+    let index
+    let key
+    for(key in valores){
+      index = valores[key].indexOf(letra)
+      if(index != -1) break
+    }
+    return {index:index, key:key}
+  }
 
+  indexCellsForDay(teachersHours, cellsAvaliableForGroup, dayKey){
+    try{
+      let data
+      let hour
+      for(hour in teachersHours){
+        data = this.searchCellForDay(cellsAvaliableForGroup, teachersHours[hour])
+        if(data.index != -1 && data.key === dayKey) break
+      }
+      return {indexTeacherHour:hour,
+        indexAvaliableHour: data['index'], 
+        keyAvaliableHour: data['key']}
+    }catch(e){
+      console.error(e)
+    }
   }
 
   indexCells(hoursTeacher, hoursAvaliables){
